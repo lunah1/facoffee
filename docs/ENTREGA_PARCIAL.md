@@ -4,7 +4,7 @@
 
 Nesta entrega parcial, o grupo organizou o repositório do projeto FACOFFEE, validou a infraestrutura base com Docker e iniciou o desenvolvimento do microsserviço responsável pelo domínio de usuários.
 
-A entrega ainda não representa o sistema completo, mas registra o início do desenvolvimento e a estrutura inicial necessária para evolução dos microsserviços.
+A entrega ainda não representa o sistema completo, mas demonstra progresso inicial no desenvolvimento, com estrutura de serviço, endpoints básicos e testes locais.
 
 ## Infraestrutura validada
 
@@ -38,7 +38,12 @@ GET /health
 GET /users
 GET /users/:userId
 POST /users
+GET /api/users
+GET /api/users/:userId
+POST /api/users
 ```
+
+## Testes realizados
 
 O endpoint de saúde foi testado localmente em:
 
@@ -46,7 +51,7 @@ O endpoint de saúde foi testado localmente em:
 http://localhost:3001/health
 ```
 
-Resposta obtida:
+Resposta esperada:
 
 ```json
 {
@@ -54,6 +59,14 @@ Resposta obtida:
   "service": "users-service"
 }
 ```
+
+Também foi testado o cadastro de usuário através do API Gateway:
+
+```text
+POST http://localhost:8000/api/users
+```
+
+Esse teste confirmou que o API Gateway conseguiu encaminhar a requisição para o serviço de usuários.
 
 ## Como executar o serviço de usuários
 
@@ -90,15 +103,16 @@ Até o momento, o grupo realizou:
 * validação inicial dos containers da infraestrutura;
 * criação da estrutura inicial do serviço de usuários;
 * implementação de endpoints básicos de usuários;
-* teste do endpoint `/health` retornando JSON corretamente.
+* teste do endpoint `/health`;
+* teste de criação de usuário via API Gateway.
 
 ## Próximos passos
 
 Os próximos passos do grupo são:
 
-1. Integrar o serviço de usuários ao API Gateway.
-2. Ajustar os endpoints conforme o contrato definido em `api-docs.yaml`.
-3. Adicionar persistência com banco de dados.
-4. Criar testes para os endpoints.
-5. Registrar evidências de execução.
-6. Evoluir autenticação/autorização conforme o padrão definido para o projeto.
+1. Ajustar os endpoints conforme o contrato definido em `api-docs.yaml`.
+2. Integrar o serviço de usuários com banco de dados.
+3. Criar testes automatizados para os endpoints.
+4. Registrar evidências de execução.
+5. Evoluir autenticação/autorização conforme o padrão definido para o projeto.
+6. Expandir a integração com os demais microsserviços.
