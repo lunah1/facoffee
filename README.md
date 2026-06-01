@@ -224,3 +224,73 @@ Além disso, a role `MANAGER` possui permissões de gestão de usuários no real
 - Guia da equipe Finance: [`GUIA_EQUIPE_FINANCE.md`](./GUIA_EQUIPE_FINANCE.md)
 - Compose local: [`docker-compose.yml`](./docker-compose.yml)
 - Realm Keycloak: [`keycloak/realm-facoffee.json`](./keycloak/realm-facoffee.json)
+
+#################################################################################
+## Serviço de Usuários
+
+Nesta entrega parcial, foi iniciado o desenvolvimento do microsserviço responsável pelo domínio de usuários.
+
+O serviço está localizado em:
+
+```text
+services/users-service
+```
+
+A primeira versão foi implementada com Node.js e Express, utilizando dados em memória. O objetivo neste momento é demonstrar a estrutura inicial do microsserviço e os primeiros endpoints funcionais.
+
+### Endpoints iniciais
+
+O serviço possui os seguintes endpoints:
+
+```text
+GET /health
+GET /users
+GET /users/:userId
+POST /users
+GET /api/users
+GET /api/users/:userId
+POST /api/users
+```
+
+### Como executar o serviço de usuários
+
+A partir da raiz do repositório, acesse a pasta do serviço:
+
+```bash
+cd services/users-service
+```
+
+Instale as dependências:
+
+```bash
+npm install
+```
+
+Execute o serviço em modo de desenvolvimento:
+
+```bash
+npm run dev
+```
+
+O serviço ficará disponível em:
+
+```text
+http://localhost:3001
+```
+
+### Testes realizados
+
+Foram realizados testes locais no serviço de usuários, incluindo o endpoint de saúde:
+
+```text
+GET http://localhost:3001/health
+```
+
+Também foi realizado teste de criação de usuário através do API Gateway:
+
+```text
+POST http://localhost:8000/api/users
+```
+
+Esse teste confirmou que o API Gateway conseguiu encaminhar a requisição para o serviço de usuários.
+
