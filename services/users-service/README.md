@@ -120,7 +120,3 @@ curl.exe -i -X PUT http://localhost:3001/api/users/usr_001/roles -H "Content-Typ
 ```
 
 Resultado esperado: resposta `400 Bad Request`.
-
-## Observações
-
-Esta versão ainda não implementa integração real com Keycloak, validação de JWT, persistência em banco de dados ou publicação de eventos. O foco desta etapa foi alinhar os endpoints principais do `users-service` ao contrato HTTP da API.
