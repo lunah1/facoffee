@@ -75,7 +75,7 @@ export function createUser({ name, email, roles }) {
   }
 
   const newUser = {
-    id: `usr_${Date.now()}`,
+    id: `usr_${Date.now()}_${users.length + 1}`,
     name,
     email,
     status: "ACTIVE",
