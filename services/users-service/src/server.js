@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import { swaggerDocs } from "./docs/swagger.js";
 
 import userRoutes from "./routes/userRoutes.js";
 import { initDatabase } from "./database.js";
@@ -16,6 +17,8 @@ app.get("/health", (request, response) => {
     service: "users-service"
   });
 });
+
+app.use("/docs", swaggerDocs.serve, swaggerDocs.setup);
 
 app.use(userRoutes);
 app.use("/api", userRoutes);
