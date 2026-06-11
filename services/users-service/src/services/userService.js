@@ -1,7 +1,19 @@
+import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 const VALID_ROLES = ["MANAGER", "PARTICIPANT"];
 const VALID_STATUS = ["ACTIVE", "INACTIVE"];
 
-let users = [
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const DATA_DIR = path.join(__dirname, "../../data");
+const DATA_FILE = path.join(DATA_DIR, "users.json");
+
+const initialUsers = [
   {
     id: "usr_001",
     name: "Maria Silva",
@@ -13,6 +25,26 @@ let users = [
     deactivatedAt: null
   }
 ];
+
+async function ensureDataFile() {
+  await mkdir(DATA_DIR, { recursive: true });
+
+  if (!existsSync(DATA_FILE)) {
+    await writeFile(DATA_FILE, JSON.stringify(initialUsers, null, 2));
+  }
+}
+
+async function readUsers() {
+  await ensureDataFile();
+
+  const content = await readFile(DATA_FILE, "utf-8");
+  return JSON.parse(content);
+}
+
+async function writeUsers(users) {
+  await ensureDataFile();
+  await writeFile(DATA_FILE, JSON.stringify(users, null, 2));
+}
 
 export function isValidRole(role) {
   return VALID_ROLES.includes(role);
@@ -30,7 +62,9 @@ export function areValidRoles(roles) {
   return roles.every((role) => isValidRole(role));
 }
 
-export function findAllUsers({ status, role, page = 0, size = 20 } = {}) {
+export async function findAllUsers({ status, role, page = 0, size = 20 } = {}) {
+  const users = await readUsers();
+
   let filteredUsers = users;
 
   if (status) {
@@ -60,11 +94,15 @@ export function findAllUsers({ status, role, page = 0, size = 20 } = {}) {
   };
 }
 
-export function findUserById(userId) {
-  return users.find((user) => user.id === userId);
+export async function findUserById(userId) {
+  const users = await readUsers();
+
+  return users.find((user) => user.id === userId) || null;
 }
 
-export function createUser({ name, email, roles }) {
+export async function createUser({ name, email, roles }) {
+  const users = await readUsers();
+
   const emailAlreadyExists = users.some((user) => user.email === email);
 
   if (emailAlreadyExists) {
@@ -75,7 +113,7 @@ export function createUser({ name, email, roles }) {
   }
 
   const newUser = {
-    id: `usr_${Date.now()}_${users.length + 1}`,
+    id: randomUUID(),
     name,
     email,
     status: "ACTIVE",
@@ -86,51 +124,65 @@ export function createUser({ name, email, roles }) {
   };
 
   users.push(newUser);
+  await writeUsers(users);
 
   return newUser;
 }
 
-export function updateUser(userId, { name }) {
-  const user = findUserById(userId);
+export async function updateUser(userId, { name }) {
+  const users = await readUsers();
 
-  if (!user) {
+  const userIndex = users.findIndex((user) => user.id === userId);
+
+  if (userIndex === -1) {
     return null;
   }
 
-  if (name) {
-    user.name = name;
-  }
+  users[userIndex].name = name;
+  users[userIndex].updatedAt = new Date().toISOString();
 
-  user.updatedAt = new Date().toISOString();
+  await writeUsers(users);
 
-  return user;
+  return users[userIndex];
 }
 
-export function deactivateUser(userId) {
-  const user = findUserById(userId);
+export async function deactivateUser(userId) {
+  const users = await readUsers();
 
-  if (!user) {
+  const userIndex = users.findIndex((user) => user.id === userId);
+
+  if (userIndex === -1) {
     return null;
   }
 
   const now = new Date().toISOString();
 
-  user.status = "INACTIVE";
-  user.updatedAt = now;
-  user.deactivatedAt = now;
+  users[userIndex].status = "INACTIVE";
+  users[userIndex].updatedAt = now;
+  users[userIndex].deactivatedAt = now;
 
-  return user;
+  await writeUsers(users);
+
+  return users[userIndex];
 }
 
-export function replaceUserRoles(userId, roles) {
-  const user = findUserById(userId);
+export async function replaceUserRoles(userId, roles) {
+  const users = await readUsers();
 
-  if (!user) {
+  const userIndex = users.findIndex((user) => user.id === userId);
+
+  if (userIndex === -1) {
     return null;
   }
 
-  user.roles = roles;
-  user.updatedAt = new Date().toISOString();
+  users[userIndex].roles = roles;
+  users[userIndex].updatedAt = new Date().toISOString();
 
-  return user;
+  await writeUsers(users);
+
+  return users[userIndex];
+}
+
+export async function clearUsersForTests() {
+  await writeUsers([]);
 }
