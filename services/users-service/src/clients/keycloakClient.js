@@ -114,8 +114,10 @@ async function createKeycloakUser({ name, email }) {
       username: email,
       email,
       firstName: name,
+      lastName: "FACOFFEE",
       enabled: true,
-      emailVerified: true
+      emailVerified: true,
+      requiredActions: []
     }
   });
 
@@ -144,8 +146,10 @@ async function updateKeycloakUser(keycloakId, { name, email, enabled = true }) {
         username: email,
         email,
         firstName: name,
+        lastName: "FACOFFEE",
         enabled,
-        emailVerified: true
+        emailVerified: true,
+        requiredActions: []
       }
     }
   );
@@ -297,6 +301,32 @@ export async function disableKeycloakUser({ keycloakId, email }) {
   );
 
   await assertExpectedResponse(response, [204], "desativar usuário");
+
+  return resolvedKeycloakId;
+}
+
+export async function syncKeycloakUserProfile({
+  keycloakId,
+  email,
+  name,
+  enabled = true
+}) {
+  let resolvedKeycloakId = keycloakId;
+
+  if (!resolvedKeycloakId && email) {
+    const user = await findKeycloakUserByEmail(email);
+    resolvedKeycloakId = user?.id;
+  }
+
+  if (!resolvedKeycloakId) {
+    throw new Error("Usuário não encontrado no Keycloak para atualização.");
+  }
+
+  await updateKeycloakUser(resolvedKeycloakId, {
+    name,
+    email,
+    enabled
+  });
 
   return resolvedKeycloakId;
 }

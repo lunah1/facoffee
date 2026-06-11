@@ -17,6 +17,7 @@ import { publishEvent } from "../events/eventPublisher.js";
 import {
   createOrUpdateKeycloakUser,
   disableKeycloakUser,
+  syncKeycloakUserProfile,
   syncKeycloakUserRoles
 } from "../clients/keycloakClient.js";
 
@@ -146,14 +147,30 @@ export async function updateUserData(request, response) {
     });
   }
 
-  const user = await updateUser(userId, { name });
+  const currentUser = await findUserByIdInternal(userId);
 
-  if (!user) {
+  if (!currentUser) {
     return response.status(404).json({
       error: "user_not_found",
       message: "Usuário não encontrado."
     });
   }
+
+  try {
+    await syncKeycloakUserProfile({
+      keycloakId: currentUser.keycloakId,
+      email: currentUser.email,
+      name,
+      enabled: currentUser.status === "ACTIVE"
+    });
+  } catch (error) {
+    return response.status(502).json({
+      error: "keycloak_sync_failed",
+      message: "Não foi possível atualizar o usuário no Keycloak."
+    });
+  }
+
+  const user = await updateUser(userId, { name });
 
   return response.status(200).json(user);
 }
