@@ -1,0 +1,26 @@
+[
+  {
+    "id": "usr_001",
+    "name": "Maria Silva",
+    "email": "maria.silva@facoffee.com",
+    "status": "ACTIVE",
+    "roles": [
+      "PARTICIPANT"
+    ],
+    "createdAt": "2026-06-11T03:29:27.106Z",
+    "updatedAt": null,
+    "deactivatedAt": null
+  },
+  {
+    "id": "f44fd90e-bbef-4a9c-9696-6e25fcd307a6",
+    "name": "Usuario Persistente",
+    "email": "persistente@facoffee.com",
+    "status": "ACTIVE",
+    "roles": [
+      "PARTICIPANT"
+    ],
+    "createdAt": "2026-06-11T03:29:48.274Z",
+    "updatedAt": null,
+    "deactivatedAt": null
+  }
+]

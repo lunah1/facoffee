@@ -8,10 +8,10 @@ import {
   areValidRoles
 } from "../services/userService.js";
 
-export function listUsers(request, response) {
+export async function listUsers(request, response) {
   const { status, role, page, size } = request.query;
 
-  const result = findAllUsers({
+  const result = await findAllUsers({
     status,
     role,
     page,
@@ -21,10 +21,10 @@ export function listUsers(request, response) {
   return response.json(result);
 }
 
-export function getUserById(request, response) {
+export async function getUserById(request, response) {
   const { userId } = request.params;
 
-  const user = findUserById(userId);
+  const user = await findUserById(userId);
 
   if (!user) {
     return response.status(404).json({
@@ -36,7 +36,7 @@ export function getUserById(request, response) {
   return response.json(user);
 }
 
-export function storeUser(request, response) {
+export async function storeUser(request, response) {
   const { name, email, roles } = request.body;
 
   if (!name || !email) {
@@ -69,7 +69,7 @@ export function storeUser(request, response) {
     });
   }
 
-  const result = createUser({ name, email, roles });
+  const result = await createUser({ name, email, roles });
 
   if (result.error) {
     return response.status(409).json(result);
@@ -78,7 +78,7 @@ export function storeUser(request, response) {
   return response.status(201).json(result);
 }
 
-export function updateUserData(request, response) {
+export async function updateUserData(request, response) {
   const { userId } = request.params;
   const { name } = request.body;
 
@@ -96,7 +96,7 @@ export function updateUserData(request, response) {
     });
   }
 
-  const user = updateUser(userId, { name });
+  const user = await updateUser(userId, { name });
 
   if (!user) {
     return response.status(404).json({
@@ -108,10 +108,10 @@ export function updateUserData(request, response) {
   return response.status(200).json(user);
 }
 
-export function deactivateUserData(request, response) {
+export async function deactivateUserData(request, response) {
   const { userId } = request.params;
 
-  const user = deactivateUser(userId);
+  const user = await deactivateUser(userId);
 
   if (!user) {
     return response.status(404).json({
@@ -123,7 +123,7 @@ export function deactivateUserData(request, response) {
   return response.status(200).json(user);
 }
 
-export function replaceUserRolesData(request, response) {
+export async function replaceUserRolesData(request, response) {
   const { userId } = request.params;
   const { roles } = request.body;
 
@@ -134,7 +134,7 @@ export function replaceUserRolesData(request, response) {
     });
   }
 
-  const user = replaceUserRoles(userId, roles);
+  const user = await replaceUserRoles(userId, roles);
 
   if (!user) {
     return response.status(404).json({
