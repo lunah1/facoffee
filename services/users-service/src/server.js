@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 
 import userRoutes from "./routes/userRoutes.js";
+import { initDatabase } from "./database.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -26,6 +27,13 @@ app.use((request, response) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Users service running on port ${PORT}`);
-});
+initDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Users service running on port ${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error("Erro ao inicializar banco de dados:", error);
+    process.exit(1);
+  });
