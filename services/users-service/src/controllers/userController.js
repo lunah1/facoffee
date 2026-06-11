@@ -1,147 +1,190 @@
-import {
-  findAllUsers,
-  findUserById,
-  createUser,
-  updateUser,
-  deactivateUser,
-  replaceUserRoles,
-  areValidRoles
-} from "../services/userService.js";
+import * as userRepository from "../repositories/userRepository.js";
 
-export function listUsers(request, response) {
-  const { status, role, page, size } = request.query;
+export async function listUsers(request, response) {
+  try {
+    const users = await userRepository.findAll();
 
-  const result = findAllUsers({
-    status,
-    role,
-    page,
-    size
-  });
-
-  return response.json(result);
+    return response.json(users);
+  } catch (error) {
+    return response.status(500).json({
+      error: "internal_error",
+      message: error.message
+    });
+  }
 }
 
-export function getUserById(request, response) {
-  const { userId } = request.params;
+export async function getUserById(request, response) {
+  try {
+    const { userId } = request.params;
 
-  const user = findUserById(userId);
+    const user = await userRepository.findById(userId);
 
-  if (!user) {
-    return response.status(404).json({
-      error: "user_not_found",
-      message: "Usuário não encontrado."
+    if (!user) {
+      return response.status(404).json({
+        error: "user_not_found",
+        message: "Usuário não encontrado."
+      });
+    }
+
+    return response.json(user);
+  } catch (error) {
+    return response.status(500).json({
+      error: "internal_error",
+      message: error.message
     });
   }
-
-  return response.json(user);
 }
 
-export function storeUser(request, response) {
-  const { name, email, roles } = request.body;
+export async function storeUser(request, response) {
+  try {
+    const { name, email, roles } = request.body;
 
-  if (!name || !email) {
-    return response.status(400).json({
-      error: "invalid_request",
-      message: "Nome e e-mail são obrigatórios."
+    if (!name || !email) {
+      return response.status(400).json({
+        error: "invalid_request",
+        message: "Nome e e-mail são obrigatórios."
+      });
+    }
+
+    if (name.length < 3) {
+      return response.status(400).json({
+        error: "invalid_name",
+        message: "O nome deve possuir pelo menos 3 caracteres."
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(email)) {
+      return response.status(400).json({
+        error: "invalid_email",
+        message: "Formato de e-mail inválido."
+      });
+    }
+
+    const now = new Date();
+
+    const createdUser = await userRepository.createUser({
+      name,
+      email,
+      status: "ACTIVE",
+      roles: roles || ["PARTICIPANT"],
+      createdAt: now,
+      updatedAt: now,
+      deactivatedAt: null
+    });
+
+    return response.status(201).json(createdUser);
+  } catch (error) {
+    if (error.code === "23505") {
+      return response.status(409).json({
+        error: "email_already_exists",
+        message: "Já existe um usuário com este e-mail."
+      });
+    }
+
+    return response.status(500).json({
+      error: "internal_error",
+      message: error.message
     });
   }
-
-  if (name.length < 3) {
-    return response.status(400).json({
-      error: "invalid_name",
-      message: "O nome deve ter pelo menos 3 caracteres."
-    });
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  if (!emailRegex.test(email)) {
-    return response.status(400).json({
-      error: "invalid_email",
-      message: "O e-mail informado não possui um formato válido."
-    });
-  }
-
-  if (roles !== undefined && !areValidRoles(roles)) {
-    return response.status(400).json({
-      error: "invalid_roles",
-      message: "As roles devem ser uma lista contendo apenas MANAGER ou PARTICIPANT."
-    });
-  }
-
-  const result = createUser({ name, email, roles });
-
-  if (result.error) {
-    return response.status(409).json(result);
-  }
-
-  return response.status(201).json(result);
 }
 
-export function updateUserData(request, response) {
-  const { userId } = request.params;
-  const { name } = request.body;
+export async function updateUserData(request, response) {
+  try {
+    const { userId } = request.params;
+    const { name, email, status, roles } = request.body;
 
-  if (!name) {
-    return response.status(400).json({
-      error: "invalid_request",
-      message: "Informe ao menos o nome para atualização."
+    const user = await userRepository.findById(userId);
+
+    if (!user) {
+      return response.status(404).json({
+        error: "user_not_found",
+        message: "Usuário não encontrado."
+      });
+    }
+
+    const updatedUser = await userRepository.update(userId, {
+      name: name ?? user.name,
+      email: email ?? user.email,
+      status: status ?? user.status,
+      roles: roles ?? user.roles,
+      deactivatedAt: user.deactivated_at
+    });
+
+    return response.status(200).json(updatedUser);
+  } catch (error) {
+    return response.status(500).json({
+      error: "internal_error",
+      message: error.message
     });
   }
-
-  if (name.length < 3) {
-    return response.status(400).json({
-      error: "invalid_name",
-      message: "O nome deve ter pelo menos 3 caracteres."
-    });
-  }
-
-  const user = updateUser(userId, { name });
-
-  if (!user) {
-    return response.status(404).json({
-      error: "user_not_found",
-      message: "Usuário não encontrado."
-    });
-  }
-
-  return response.status(200).json(user);
 }
 
-export function deactivateUserData(request, response) {
-  const { userId } = request.params;
+export async function deactivateUserData(request, response) {
+  try {
+    const { userId } = request.params;
 
-  const user = deactivateUser(userId);
+    const user = await userRepository.findById(userId);
 
-  if (!user) {
-    return response.status(404).json({
-      error: "user_not_found",
-      message: "Usuário não encontrado."
+    if (!user) {
+      return response.status(404).json({
+        error: "user_not_found",
+        message: "Usuário não encontrado."
+      });
+    }
+
+    const updatedUser = await userRepository.update(userId, {
+      name: user.name,
+      email: user.email,
+      status: "INACTIVE",
+      roles: user.roles,
+      deactivatedAt: new Date()
+    });
+
+    return response.status(200).json(updatedUser);
+  } catch (error) {
+    return response.status(500).json({
+      error: "internal_error",
+      message: error.message
     });
   }
-
-  return response.status(200).json(user);
 }
 
-export function replaceUserRolesData(request, response) {
-  const { userId } = request.params;
-  const { roles } = request.body;
+export async function replaceUserRolesData(request, response) {
+  try {
+    const { userId } = request.params;
+    const { roles } = request.body;
 
-  if (!areValidRoles(roles)) {
-    return response.status(400).json({
-      error: "invalid_roles",
-      message: "As roles devem ser uma lista contendo apenas MANAGER ou PARTICIPANT."
+    if (!Array.isArray(roles)) {
+      return response.status(400).json({
+        error: "invalid_roles",
+        message: "Roles deve ser uma lista."
+      });
+    }
+
+    const user = await userRepository.findById(userId);
+
+    if (!user) {
+      return response.status(404).json({
+        error: "user_not_found",
+        message: "Usuário não encontrado."
+      });
+    }
+
+    const updatedUser = await userRepository.update(userId, {
+      name: user.name,
+      email: user.email,
+      status: user.status,
+      roles,
+      deactivatedAt: user.deactivated_at
+    });
+
+    return response.status(200).json(updatedUser);
+  } catch (error) {
+    return response.status(500).json({
+      error: "internal_error",
+      message: error.message
     });
   }
-
-  const user = replaceUserRoles(userId, roles);
-
-  if (!user) {
-    return response.status(404).json({
-      error: "user_not_found",
-      message: "Usuário não encontrado."
-    });
-  }
-
-  return response.status(200).json(user);
 }
