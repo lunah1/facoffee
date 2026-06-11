@@ -8,6 +8,8 @@ import {
   areValidRoles
 } from "../services/userService.js";
 
+import { publishEvent } from "../events/eventPublisher.js";
+
 export async function listUsers(request, response) {
   const { status, role, page, size } = request.query;
 
@@ -75,6 +77,12 @@ export async function storeUser(request, response) {
     return response.status(409).json(result);
   }
 
+  await publishEvent("user.created", {
+    type: "UserCreated",
+    occurredAt: new Date().toISOString(),
+    data: result
+});
+
   return response.status(201).json(result);
 }
 
@@ -120,6 +128,12 @@ export async function deactivateUserData(request, response) {
     });
   }
 
+  await publishEvent("user.deactivated", {
+    type: "UserDeactivated",
+    occurredAt: new Date().toISOString(),
+    data: user
+});
+
   return response.status(200).json(user);
 }
 
@@ -142,6 +156,12 @@ export async function replaceUserRolesData(request, response) {
       message: "Usuário não encontrado."
     });
   }
+
+  await publishEvent("user.roles.updated", {
+    type: "UserRolesUpdated",
+    occurredAt: new Date().toISOString(),
+    data: user
+});
 
   return response.status(200).json(user);
 }
