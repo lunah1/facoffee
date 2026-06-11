@@ -1,0 +1,336 @@
+openapi: 3.0.3
+info:
+  title: FACOFFEE - Users Service
+  version: 1.0.0
+  description: Documentação local dos endpoints do serviço de usuários.
+
+servers:
+  - url: http://localhost:3001/api
+    description: Users Service local
+
+tags:
+  - name: Users
+    description: Operações do domínio de usuários
+
+paths:
+  /users:
+    post:
+      tags:
+        - Users
+      summary: Criar usuário
+      description: Cria um usuário no domínio e sincroniza com o Keycloak.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+            example:
+              name: Usuario Demo
+              email: usuario.demo@facoffee.com
+              roles:
+                - PARTICIPANT
+      responses:
+        "201":
+          description: Usuário criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Dados inválidos
+        "409":
+          description: E-mail já cadastrado
+        "502":
+          description: Falha de sincronização com Keycloak
+
+    get:
+      tags:
+        - Users
+      summary: Listar usuários
+      description: Lista usuários com filtros e paginação. Requer papel MANAGER.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE]
+        - name: role
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [MANAGER, PARTICIPANT]
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 20
+      responses:
+        "200":
+          description: Lista paginada de usuários
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedUsers"
+        "401":
+          description: Token ausente ou inválido
+        "403":
+          description: Acesso negado
+
+  /users/{userId}:
+    get:
+      tags:
+        - Users
+      summary: Buscar usuário por ID
+      description: MANAGER pode consultar qualquer usuário. PARTICIPANT só pode consultar o próprio usuário.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: Usuário encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Token ausente ou inválido
+        "403":
+          description: Acesso negado
+        "404":
+          description: Usuário não encontrado
+
+    patch:
+      tags:
+        - Users
+      summary: Atualizar usuário
+      description: Atualiza dados básicos do usuário e sincroniza o perfil no Keycloak.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+            example:
+              name: Usuario Atualizado
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Dados inválidos
+        "401":
+          description: Token ausente ou inválido
+        "403":
+          description: Acesso negado
+        "404":
+          description: Usuário não encontrado
+        "502":
+          description: Falha de sincronização com Keycloak
+
+    delete:
+      tags:
+        - Users
+      summary: Desativar usuário
+      description: Desativa logicamente o usuário no domínio e desativa a conta no Keycloak.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeactivateUserRequest"
+            example:
+              reason: Usuario nao participa mais da copa
+      responses:
+        "200":
+          description: Usuário desativado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Motivo inválido
+        "401":
+          description: Token ausente ou inválido
+        "403":
+          description: Acesso negado
+        "404":
+          description: Usuário não encontrado
+        "502":
+          description: Falha de sincronização com Keycloak
+
+  /users/{userId}/roles:
+    put:
+      tags:
+        - Users
+      summary: Substituir papéis do usuário
+      description: Substitui integralmente as roles do usuário no domínio e no Keycloak. Requer papel MANAGER.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRolesRequest"
+            example:
+              roles:
+                - MANAGER
+      responses:
+        "200":
+          description: Roles atualizadas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Roles inválidas
+        "401":
+          description: Token ausente ou inválido
+        "403":
+          description: Acesso negado
+        "404":
+          description: Usuário não encontrado
+        "502":
+          description: Falha de sincronização com Keycloak
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: 550e8400-e29b-41d4-a716-446655440000
+
+  schemas:
+    CreateUserRequest:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+          example: Usuario Demo
+        email:
+          type: string
+          format: email
+          example: usuario.demo@facoffee.com
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [MANAGER, PARTICIPANT]
+          example:
+            - PARTICIPANT
+
+    UpdateUserRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: Usuario Atualizado
+
+    UpdateRolesRequest:
+      type: object
+      required:
+        - roles
+      properties:
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [MANAGER, PARTICIPANT]
+          example:
+            - MANAGER
+
+    DeactivateUserRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          example: Usuario nao participa mais da copa
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+        roles:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        deactivatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    PaginatedUsers:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        page:
+          type: object
+          properties:
+            page:
+              type: integer
+            size:
+              type: integer
+            totalElements:
+              type: integer
+            totalPages:
+              type: integer

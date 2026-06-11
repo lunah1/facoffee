@@ -5,8 +5,8 @@ import { pool } from "../database.js";
 const VALID_ROLES = ["MANAGER", "PARTICIPANT"];
 const VALID_STATUS = ["ACTIVE", "INACTIVE"];
 
-function mapUser(row) {
-  return {
+function mapUser(row, { includeInternal = false } = {}) {
+  const user = {
     id: row.id,
     name: row.name,
     email: row.email,
@@ -16,6 +16,12 @@ function mapUser(row) {
     updatedAt: row.updated_at,
     deactivatedAt: row.deactivated_at
   };
+
+  if (includeInternal) {
+    user.keycloakId = row.keycloak_id;
+  }
+
+  return user;
 }
 
 export function isValidRole(role) {
@@ -81,7 +87,7 @@ export async function findAllUsers({ status, role, page = 0, size = 20 } = {}) {
   );
 
   return {
-    items: result.rows.map(mapUser),
+    items: result.rows.map((row) => mapUser(row)),
     page: {
       page: pageNumber,
       size: pageSize,
@@ -101,7 +107,29 @@ export async function findUserById(userId) {
   return mapUser(result.rows[0]);
 }
 
-export async function createUser({ name, email, roles }) {
+export async function findUserByIdInternal(userId) {
+  const result = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return mapUser(result.rows[0], { includeInternal: true });
+}
+
+export async function findUserByEmail(email) {
+  const result = await pool.query("SELECT * FROM users WHERE email = $1", [
+    email
+  ]);
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return mapUser(result.rows[0], { includeInternal: true });
+}
+
+export async function createUser({ name, email, roles, keycloakId = null }) {
   const selectedRoles = roles && roles.length > 0 ? roles : ["PARTICIPANT"];
 
   try {
@@ -113,14 +141,22 @@ export async function createUser({ name, email, roles }) {
         email,
         status,
         roles,
+        keycloak_id,
         created_at,
         updated_at,
         deactivated_at
       )
-      VALUES ($1, $2, $3, $4, $5, NOW(), NULL, NULL)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW(), NULL, NULL)
       RETURNING *
       `,
-      [randomUUID(), name, email, "ACTIVE", JSON.stringify(selectedRoles)]
+      [
+        randomUUID(),
+        name,
+        email,
+        "ACTIVE",
+        JSON.stringify(selectedRoles),
+        keycloakId
+      ]
     );
 
     return mapUser(result.rows[0]);

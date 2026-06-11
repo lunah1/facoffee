@@ -22,4 +22,15 @@ export async function initDatabase() {
       deactivated_at TIMESTAMPTZ
     );
   `);
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS keycloak_id TEXT;
+  `);
+
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS users_keycloak_id_unique
+    ON users(keycloak_id)
+    WHERE keycloak_id IS NOT NULL;
+  `);
 }
