@@ -1,7 +1,18 @@
-import * as userRepository from "../repositories/userRepository.js";
-
 const VALID_ROLES = ["MANAGER", "PARTICIPANT"];
 const VALID_STATUS = ["ACTIVE", "INACTIVE"];
+
+let users = [
+  {
+    id: "usr_001",
+    name: "Maria Silva",
+    email: "maria.silva@facoffee.com",
+    status: "ACTIVE",
+    roles: ["PARTICIPANT"],
+    createdAt: new Date().toISOString(),
+    updatedAt: null,
+    deactivatedAt: null
+  }
+];
 
 export function isValidRole(role) {
   return VALID_ROLES.includes(role);
@@ -19,52 +30,84 @@ export function areValidRoles(roles) {
   return roles.every((role) => isValidRole(role));
 }
 
-export async function findAllUsers(filters = {}) {
-  return await userRepository.findAll(filters);
+export function findAllUsers({ status, role, page = 0, size = 20 } = {}) {
+  let filteredUsers = users;
+
+  if (status) {
+    filteredUsers = filteredUsers.filter((user) => user.status === status);
+  }
+
+  if (role) {
+    filteredUsers = filteredUsers.filter((user) => user.roles.includes(role));
+  }
+
+  const pageNumber = Number(page);
+  const pageSize = Number(size);
+
+  const startIndex = pageNumber * pageSize;
+  const endIndex = startIndex + pageSize;
+
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
+  return {
+    items: paginatedUsers,
+    page: {
+      page: pageNumber,
+      size: pageSize,
+      totalElements: filteredUsers.length,
+      totalPages: Math.ceil(filteredUsers.length / pageSize)
+    }
+  };
 }
 
-export async function findUserById(userId) {
-  return await userRepository.findById(userId);
+export function findUserById(userId) {
+  return users.find((user) => user.id === userId);
 }
 
-export async function createUser({ name, email, roles }) {
-  const existingUser = await userRepository.findByEmail(email);
+export function createUser({ name, email, roles }) {
+  const emailAlreadyExists = users.some((user) => user.email === email);
 
-  if (existingUser) {
+  if (emailAlreadyExists) {
     return {
       error: "email_already_exists",
       message: "Já existe um usuário cadastrado com este e-mail."
     };
   }
 
-<<<<<<< Updated upstream
   const newUser = {
     id: `usr_${Date.now()}_${users.length + 1}`,
-=======
-  return await userRepository.create({
->>>>>>> Stashed changes
     name,
     email,
     status: "ACTIVE",
-    roles: roles?.length ? roles : ["PARTICIPANT"]
-  });
+    roles: roles && roles.length > 0 ? roles : ["PARTICIPANT"],
+    createdAt: new Date().toISOString(),
+    updatedAt: null,
+    deactivatedAt: null
+  };
+
+  users.push(newUser);
+
+  return newUser;
 }
 
-export async function updateUser(userId, { name }) {
-  const user = await userRepository.findById(userId);
+export function updateUser(userId, { name }) {
+  const user = findUserById(userId);
 
   if (!user) {
     return null;
   }
 
-  return await userRepository.update(userId, {
-    name,
-    updatedAt: new Date().toISOString()
-  });
+  if (name) {
+    user.name = name;
+  }
+
+  user.updatedAt = new Date().toISOString();
+
+  return user;
 }
 
-export async function deactivateUser(userId) {
-  const user = await userRepository.findById(userId);
+export function deactivateUser(userId) {
+  const user = findUserById(userId);
 
   if (!user) {
     return null;
@@ -72,19 +115,22 @@ export async function deactivateUser(userId) {
 
   const now = new Date().toISOString();
 
-  return await userRepository.update(userId, {
-    status: "INACTIVE",
-    updatedAt: now,
-    deactivatedAt: now
-  });
+  user.status = "INACTIVE";
+  user.updatedAt = now;
+  user.deactivatedAt = now;
+
+  return user;
 }
 
-export async function replaceUserRoles(userId, roles) {
-  const user = await userRepository.findById(userId);
+export function replaceUserRoles(userId, roles) {
+  const user = findUserById(userId);
 
   if (!user) {
     return null;
   }
 
-  return await userRepository.updateRoles(userId, roles);
+  user.roles = roles;
+  user.updatedAt = new Date().toISOString();
+
+  return user;
 }
