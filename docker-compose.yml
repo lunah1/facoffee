@@ -1,6 +1,5 @@
 services:
 
-
   api-gateway:
     image: nginx:1.27-alpine
     container_name: facoffee-api-gateway
