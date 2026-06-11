@@ -226,33 +226,64 @@ Além disso, a role `MANAGER` possui permissões de gestão de usuários no real
 - Realm Keycloak: [`keycloak/realm-facoffee.json`](./keycloak/realm-facoffee.json)
 
 #################################################################################
+
 ## Serviço de Usuários
 
-Nesta entrega parcial, foi iniciado o desenvolvimento do microsserviço responsável pelo domínio de usuários.
-
-O serviço está localizado em:
+O microsserviço de usuários está localizado em:
 
 ```text
 services/users-service
 ```
 
-A primeira versão foi implementada com Node.js e Express, utilizando dados em memória. O objetivo neste momento é demonstrar a estrutura inicial do microsserviço e os primeiros endpoints funcionais.
+O serviço foi implementado com Node.js e Express e contempla os principais fluxos de gerenciamento de usuários definidos para o domínio Users.
 
-### Endpoints iniciais
+A versão atual possui persistência local em arquivo JSON, armazenado em:
 
-O serviço possui os seguintes endpoints:
+```text
+services/users-service/data/users.json
+```
+
+Com isso, os dados cadastrados permanecem disponíveis mesmo após reiniciar o processo local do serviço.
+
+## Endpoints disponíveis
+
+O serviço expõe os endpoints abaixo:
 
 ```text
 GET /health
+
 GET /users
 GET /users/:userId
 POST /users
+PATCH /users/:userId
+DELETE /users/:userId
+PUT /users/:userId/roles
+
 GET /api/users
 GET /api/users/:userId
 POST /api/users
+PATCH /api/users/:userId
+DELETE /api/users/:userId
+PUT /api/users/:userId/roles
 ```
 
-### Como executar o serviço de usuários
+As rotas com prefixo `/api` foram mantidas para facilitar os testes locais e a compatibilidade com o roteamento definido para o API Gateway.
+
+## Funcionalidades implementadas
+
+O serviço de usuários implementa os seguintes fluxos:
+
+* listagem de usuários com paginação;
+* filtros por `status` e `role`;
+* busca de usuário por identificador;
+* criação de usuário;
+* validação de nome, e-mail, roles e e-mail duplicado;
+* atualização de dados básicos do usuário;
+* desativação lógica de usuário;
+* substituição integral das roles do usuário;
+* persistência local dos dados em arquivo JSON.
+
+## Como executar o serviço de usuários
 
 A partir da raiz do repositório, acesse a pasta do serviço:
 
@@ -278,19 +309,142 @@ O serviço ficará disponível em:
 http://localhost:3001
 ```
 
-### Testes realizados
-
-Foram realizados testes locais no serviço de usuários, incluindo o endpoint de saúde:
+Para verificar se o serviço está ativo, acesse:
 
 ```text
-GET http://localhost:3001/health
+http://localhost:3001/health
 ```
 
-Também foi realizado teste de criação de usuário através do API Gateway:
+Ou execute:
+
+```bash
+curl http://localhost:3001/health
+```
+
+## Testes automatizados
+
+O serviço possui testes automatizados para a camada de regras de negócio.
+
+Para executar:
+
+```bash
+cd services/users-service
+npm test
+```
+
+Os testes cobrem os principais comportamentos do serviço, incluindo:
+
+* criação de usuário;
+* aplicação da role padrão `PARTICIPANT`;
+* bloqueio de e-mail duplicado;
+* busca por ID;
+* atualização de usuário;
+* desativação lógica;
+* substituição de roles;
+* validação de roles permitidas;
+* filtros por `status` e `role`.
+
+## Testes manuais principais
+
+### Listar usuários
+
+```bash
+curl -i http://localhost:3001/api/users
+```
+
+Resultado esperado: resposta `200 OK` com os campos `items` e `page`.
+
+### Criar usuário
+
+```bash
+curl -i -X POST http://localhost:3001/api/users \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Usuario Teste\",\"email\":\"usuario.teste@facoffee.com\",\"roles\":[\"PARTICIPANT\"]}"
+```
+
+Resultado esperado: resposta `201 Created`.
+
+### Criar usuário com nome inválido
+
+```bash
+curl -i -X POST http://localhost:3001/api/users \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"An\",\"email\":\"usuario.invalido@facoffee.com\",\"roles\":[\"PARTICIPANT\"]}"
+```
+
+Resultado esperado: resposta `400 Bad Request`.
+
+### Criar usuário com e-mail duplicado
+
+Execute duas vezes o mesmo comando:
+
+```bash
+curl -i -X POST http://localhost:3001/api/users \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Usuario Duplicado\",\"email\":\"duplicado@facoffee.com\",\"roles\":[\"PARTICIPANT\"]}"
+```
+
+Resultado esperado na segunda execução: resposta `409 Conflict`.
+
+### Atualizar usuário
+
+```bash
+curl -i -X PATCH http://localhost:3001/api/users/usr_001 \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Maria Silva Atualizada\"}"
+```
+
+Resultado esperado: resposta `200 OK`, com o nome atualizado e o campo `updatedAt` preenchido.
+
+### Desativar usuário logicamente
+
+```bash
+curl -i -X DELETE http://localhost:3001/api/users/usr_001 \
+  -H "Content-Type: application/json" \
+  -d "{\"reason\":\"Teste de desativacao\"}"
+```
+
+Resultado esperado: resposta `200 OK`, com `status` igual a `INACTIVE` e `deactivatedAt` preenchido.
+
+### Substituir roles do usuário
+
+```bash
+curl -i -X PUT http://localhost:3001/api/users/usr_001/roles \
+  -H "Content-Type: application/json" \
+  -d "{\"roles\":[\"MANAGER\"]}"
+```
+
+Resultado esperado: resposta `200 OK`, com `roles` igual a `["MANAGER"]`.
+
+### Testar role inválida
+
+```bash
+curl -i -X PUT http://localhost:3001/api/users/usr_001/roles \
+  -H "Content-Type: application/json" \
+  -d "{\"roles\":[\"ADMIN\"]}"
+```
+
+Resultado esperado: resposta `400 Bad Request`.
+
+## Validação de persistência local
+
+Para validar que a persistência local está funcionando:
+
+1. Execute o serviço com `npm run dev`.
+2. Crie um usuário via `POST /api/users`.
+3. Liste os usuários com `GET /api/users`.
+4. Pare o serviço com `Ctrl + C`.
+5. Execute novamente `npm run dev`.
+6. Liste os usuários outra vez com `GET /api/users`.
+
+O usuário cadastrado anteriormente deve continuar aparecendo, pois os dados ficam armazenados no arquivo:
 
 ```text
-POST http://localhost:8000/api/users
+services/users-service/data/users.json
 ```
 
-Esse teste confirmou que o API Gateway conseguiu encaminhar a requisição para o serviço de usuários.
+## Observações
 
+A infraestrutura Docker do projeto continua sendo usada para API Gateway, RabbitMQ, Keycloak e Mailpit quando o ambiente local possui suporte adequado a Docker e virtualização.
+
+O `users-service` também pode ser executado isoladamente em ambiente local, sem Docker, usando persistência em arquivo JSON. Essa alternativa permite validar os endpoints principais do serviço mesmo quando a infraestrutura completa não está disponível na máquina do estudante.
