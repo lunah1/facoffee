@@ -1,7 +1,8 @@
 import express from "express";
 import cors from "cors";
-
+import { initializeDatabase } from "./database/database.js";
 import userRoutes from "./routes/userRoutes.js";
+
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -25,6 +26,8 @@ app.use((request, response) => {
     message: "Rota não encontrada."
   });
 });
+
+await initializeDatabase();
 
 app.listen(PORT, () => {
   console.log(`Users service running on port ${PORT}`);

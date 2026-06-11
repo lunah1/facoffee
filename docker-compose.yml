@@ -1,63 +1,79 @@
 services:
+
+
   api-gateway:
     image: nginx:1.27-alpine
     container_name: facoffee-api-gateway
-    hostname: api-gateway
-    restart: unless-stopped
     ports:
       - "8000:8000"
-    environment:
-      USERS_UPSTREAM: host.docker.internal:3001
-      PARTICIPATION_UPSTREAM: host.docker.internal:3002
-      FINANCE_UPSTREAM: host.docker.internal:3003
-    volumes:
-      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       - keycloak
+      - users-service
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - facoffee-net
 
   rabbitmq:
     image: rabbitmq:3.13-management
     container_name: facoffee-rabbitmq
-    hostname: rabbitmq
-    restart: unless-stopped
     ports:
       - "5672:5672"
       - "15672:15672"
-    volumes:
-      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
-      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
+    networks:
+      - facoffee-net
 
   keycloak:
     image: quay.io/keycloak/keycloak:25.0
     container_name: facoffee-keycloak
-    hostname: keycloak
-    restart: unless-stopped
     command: start-dev --import-realm
-    environment:
-      KEYCLOAK_ADMIN: facoffee
-      KEYCLOAK_ADMIN_PASSWORD: facoffee
-      KC_HOSTNAME_STRICT: "false"
     ports:
       - "8080:8080"
-    volumes:
-      - keycloak_data:/opt/keycloak/data
-      - ./keycloak/realm-facoffee.json:/opt/keycloak/data/import/realm-facoffee.json:ro
+    networks:
+      - facoffee-net
 
   mailpit:
     image: axllent/mailpit:v1.20
     container_name: facoffee-mailpit
-    hostname: mailpit
-    restart: unless-stopped
     ports:
       - "1025:1025"
       - "8025:8025"
+    networks:
+      - facoffee-net
+
+  users-db:
+    image: postgres:16-alpine
+    container_name: facoffee-users-db
+    environment:
+      POSTGRES_DB: usersdb
+      POSTGRES_USER: users
+      POSTGRES_PASSWORD: users123
+    ports:
+      - "5432:5432"
+    volumes:
+      - users_db_data:/var/lib/postgresql/data
+    networks:
+      - facoffee-net
+
+  users-service:
+    build: ./services/users-service
+    container_name: facoffee-users-service
+    ports:
+      - "3001:3001"
+    environment:
+      DB_HOST: users-db
+      DB_PORT: 5432
+      DB_NAME: usersdb
+      DB_USER: users
+      DB_PASSWORD: users123
+    depends_on:
+      - users-db
+    networks:
+      - facoffee-net
 
 volumes:
-  keycloak_data:
+  users_db_data:
+
+networks:
+  facoffee-net:
+    driver: bridge
